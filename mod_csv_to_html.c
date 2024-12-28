@@ -2,40 +2,38 @@
 #include "http_config.h"
 #include "http_protocol.h"
 #include "ap_config.h"
+#include "apr_strings.h"
 #include "mod_csv_to_html.h"
-/* The sample content handler */
+#include "csv_reader.h"
+
 
 
 static int csv_to_html_handler(request_rec *r) {
-    if (strcmp(r->handler, "csv_to_html")) {
+    if (strcmp(r->handler, "csv_to_html") != 0) {
         return DECLINED;
     }
-
     if (r->args) {
-        char *hasDownload = get_arg_value(r->args, "download");
-        if (hasDownload != NULL && *hasDownload == '1') {
-            free(hasDownload);
+        const char *has_download_arg = getArgValues(r->args, "download", r);
+        if (has_download_arg != NULL && *has_download_arg == '1') {
             return DECLINED;
         }
     }
     r->content_type = "text/html";
-    char *csv_filename = malloc(strlen(r->canonical_filename) + 1);
+    const char *csv_filename = apr_pstrdup(r->pool,r->canonical_filename);
     if (csv_filename == NULL) {
-        csv_filename = "file_not_found.csv";
-    } else {
-        strcpy(csv_filename, r->canonical_filename);
+        return DECLINED;
     }
-    const char *filename = get_file_name(csv_filename);
+    const char *filename = getFileName(csv_filename);
+    FILE *pt_file = openFile(r->canonical_filename, "r");
+
     ap_rputs("<!DOCTYPE html><html><head><title>",r);
     ap_rputs(filename, r);
     ap_rputs("</title>", r);
-    add_styles(r);
+    addStyles(r);
     ap_rputs("</head><body style='padding:10px 20px;'>", r);
-    get_file_info_header(filename, r);
-    if (strcmp(csv_filename,"file_not_found.csv") == 0) {
-        free(csv_filename);
-    }
-    render_table(r->canonical_filename, r);
+    getFileInfoHeader(filename, r);
+
+    renderTable(pt_file, r);
     ap_rputs("</body>", r);
     ap_rputs("</html>", r);
     return OK;
@@ -56,16 +54,16 @@ module AP_MODULE_DECLARE_DATA csv_to_html_module = {
     csv_to_html_register_hooks /* register hooks                      */
 };
 
-const char *get_file_name(char *path) {
+const char *getFileName(const char *pt_filePath) {
     // Find the last slash
-    const char *last_slash = strrchr(path, '/');
+    const char *last_slash = strrchr(pt_filePath, '/');
     if (last_slash) {
         return last_slash + 1; // Skip the slash
     }
-    return path;
+    return pt_filePath;
 }
 
-void add_styles(request_rec *r) {
+void addStyles(request_rec *r) {
     ap_rputs("<style>\n", r);
     ap_rputs(
         "table {width:100%;border-collapse: collapse;margin: 25px 0;font-size: 0.9em;font-family: sans-serif;box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);}\n",
@@ -78,26 +76,29 @@ void add_styles(request_rec *r) {
     ap_rputs("</style>", r);
 }
 
-void render_table(const char *file_location, request_rec *r) {
+void renderTable(FILE *pt_file, request_rec *r) {
     ap_rputs("<table>", r);
     ap_rputs("<tbody>", r);
-    FILE *stream = fopen(file_location, "r");
-    if (NULL != stream) {
-        char line[1024];
-        while (fgets(line, 1024, stream)) {
+    const char delimiter = getDelimiter(pt_file);
+
+    const int fieldsCount = getFieldsCount(pt_file, &delimiter);
+
+    if (NULL != pt_file) {
+        char line[LINE_MAX];
+        rewind(pt_file);
+        while (fgets(line, LINE_MAX, pt_file)) {
             ap_rputs("<tr>", r);
-            char *csv_line = strdup(line);
-            char *fields[100];
-            int field_count = parse_csv_line(csv_line, fields);
-            for (int i = 0; i < field_count; i++) {
+            const char *csv_line = apr_pstrdup(r->pool,line);
+            char *fields[fieldsCount];
+             parseCsvLine(csv_line, &delimiter, &fieldsCount, fields, r);
+            for (int i = 0; i < fieldsCount; i++) {
                 ap_rputs("<td>", r);
                 ap_rputs(fields[i], r);
                 ap_rputs("</td>", r);
-                free(fields[i]);
             }
             ap_rputs("</tr>", r);
         }
-        fclose(stream);
+        closeFile(pt_file);
     } else {
         ap_rputs("File not found", r);
     }
@@ -106,61 +107,15 @@ void render_table(const char *file_location, request_rec *r) {
     ap_rputs("</table>", r);
 }
 
-/**
- * Parses a single line of CSV data into an array of fields.
- *
- * @param line The CSV line to parse.
- * @param fields Array to store pointers to parsed fields.
- * @return The number of fields parsed.
- */
-int parse_csv_line(const char *line, char **fields) {
-    const char *ptr = line;
-    int field_count = 0;
-    bool in_quotes = false;
-    char buffer[1024];
-    int buffer_pos = 0;
 
-    while (*ptr != '\0') {
-        if (in_quotes) {
-            if (*ptr == '"') {
-                // Handle double quotes within quoted field
-                if (*(ptr + 1) == '"') {
-                    buffer[buffer_pos++] = '"';
-                    ptr++; // Skip the second quote
-                } else {
-                    in_quotes = false; // End of quoted field
-                }
-            } else {
-                buffer[buffer_pos++] = *ptr;
-            }
-        } else {
-            if (*ptr == ',') {
-                // End of field
-                buffer[buffer_pos] = '\0';
-                fields[field_count++] = strdup(buffer);
-                buffer_pos = 0;
-            } else if (*ptr == '"') {
-                in_quotes = true; // Start of quoted field
-            } else {
-                buffer[buffer_pos++] = *ptr;
-            }
-        }
-        ptr++;
-    }
-    // Add the last field
-    buffer[buffer_pos] = '\0';
-    fields[field_count++] = strdup(buffer);
 
-    return field_count;
-}
-
-void get_file_info_header(const char *filename, request_rec *r) {
+void getFileInfoHeader(const char *pt_fileLocation, request_rec *r) {
     ap_rputs(
         "<div style='align-items: center; display:flex; flex-direction:row; justify-content: space-between;'>",
         r);
     ap_rputs("<div>", r);
     ap_rputs("<h2>", r);
-    ap_rputs(filename, r);
+    ap_rputs(pt_fileLocation, r);
     ap_rputs("</h2>", r);
     ap_rputs("</div>", r);
 
@@ -173,37 +128,30 @@ void get_file_info_header(const char *filename, request_rec *r) {
     ap_rputs("<hr />", r);
 }
 
-/**
- * Parses the args string and retrieves the value for a given field name.
- *
- * @param args The query string in the format "key=value&key=value".
- * @param field The field name whose value is to be retrieved.
- * @return The value of the field, or NULL if the field is not found.
- *         The caller is responsible for freeing the returned value.
- */
-char *get_arg_value(const char *args, const char *field) {
-    if (args == NULL || field == NULL) {
+
+char *getArgValues(const char *pt_args, const char *pt_field, const request_rec *r) {
+    if (pt_args == NULL || pt_field == NULL) {
         return NULL;
     }
 
-    size_t field_len = strlen(field);
-    const char *start = args;
+    size_t field_len = strlen(pt_field);
+    const char *start = pt_args;
 
     while (start && *start != '\0') {
         // Find the position of the '=' in the current key-value pair
         const char *equals = strchr(start, '=');
         if (equals == NULL) {
-            break; // Malformed query string
+            break;
         }
 
         // Check if the key matches the requested field
-        if ((size_t) (equals - start) == field_len && strncmp(start, field, field_len) == 0) {
+        if ((size_t) (equals - start) == field_len && strncmp(start, pt_field, field_len) == 0) {
             // Found the key; extract the value
             const char *value_start = equals + 1;
             const char *amp = strchr(value_start, '&'); // Find the end of the value
             size_t value_len = amp ? (size_t) (amp - value_start) : strlen(value_start);
 
-            char *value = malloc(value_len + 1);
+            char *value = apr_pcalloc(r->pool, value_len + 1);
             if (value == NULL) {
                 return NULL; // Memory allocation failed
             }

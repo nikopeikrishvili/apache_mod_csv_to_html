@@ -1,7 +1,9 @@
 #pragma once
-const char *get_file_name(char *filename);
-void add_styles(request_rec *r);
-void render_table(const char *file_location, request_rec *r);
-int parse_csv_line(const char *line, char **fields);
-void get_file_info_header(const char *file_location, request_rec *r);
-char *get_arg_value(const char *args, const char *field);
+/**
+*
+*/
+const char *getFileName(const char *pt_filePath);
+void addStyles(request_rec *r);
+void renderTable(FILE *pt_file, request_rec *r);
+void getFileInfoHeader(const char *pt_fileLocation, request_rec *r);
+char *getArgValues(const char *pt_args, const char *pt_field, const request_rec *r);
