@@ -6,8 +6,11 @@
 #include "mod_csv_to_html.h"
 #include "csv_reader.h"
 
-
-
+/**
+ * Main handler for module
+ * @param r - Apache request structure
+ * @return OK or DECLINED , in case of DECLINED file will be downloaded
+ */
 static int csv_to_html_handler(request_rec *r) {
     if (strcmp(r->handler, "csv_to_html") != 0) {
         return DECLINED;
@@ -15,18 +18,20 @@ static int csv_to_html_handler(request_rec *r) {
     if (r->args) {
         const char *has_download_arg = getArgValues(r->args, "download", r);
         if (has_download_arg != NULL && *has_download_arg == '1') {
-            return DECLINED;
+            return DECLINED; // Download file
         }
     }
     r->content_type = "text/html";
-    const char *csv_filename = apr_pstrdup(r->pool,r->canonical_filename);
+    const char *csv_filename = apr_pstrdup(r->pool, r->canonical_filename);
     if (csv_filename == NULL) {
-        return DECLINED;
+        return DECLINED; // Download file
     }
     const char *filename = getFileName(csv_filename);
     FILE *pt_file = openFile(r->canonical_filename, "r");
-
-    ap_rputs("<!DOCTYPE html><html><head><title>",r);
+    if (NULL == pt_file) {
+        return DECLINED; // Download file
+    }
+    ap_rputs("<!DOCTYPE html><html><head><title>", r);
     ap_rputs(filename, r);
     ap_rputs("</title>", r);
     addStyles(r);
@@ -36,6 +41,8 @@ static int csv_to_html_handler(request_rec *r) {
     renderTable(pt_file, r);
     ap_rputs("</body>", r);
     ap_rputs("</html>", r);
+    closeFile(pt_file);
+
     return OK;
 }
 
@@ -54,6 +61,11 @@ module AP_MODULE_DECLARE_DATA csv_to_html_module = {
     csv_to_html_register_hooks /* register hooks                      */
 };
 
+/**
+ * Given file path it returns just filename and extension
+ * @param pt_filePath - file full pack
+ * @return
+ */
 const char *getFileName(const char *pt_filePath) {
     // Find the last slash
     const char *last_slash = strrchr(pt_filePath, '/');
@@ -63,6 +75,10 @@ const char *getFileName(const char *pt_filePath) {
     return pt_filePath;
 }
 
+/**
+ * Adds styles to html content in <style> tag
+ * @param r
+ */
 void addStyles(request_rec *r) {
     ap_rputs("<style>\n", r);
     ap_rputs(
@@ -76,39 +92,40 @@ void addStyles(request_rec *r) {
     ap_rputs("</style>", r);
 }
 
+/**
+ *
+ * @param pt_file - opened file pointer - file descriptor is not NULL it's checked in parent function
+ * @param r - Apache request structure
+ */
 void renderTable(FILE *pt_file, request_rec *r) {
     ap_rputs("<table>", r);
     ap_rputs("<tbody>", r);
     const char delimiter = getDelimiter(pt_file);
 
     const int fieldsCount = getFieldsCount(pt_file, &delimiter);
-
-    if (NULL != pt_file) {
-        char line[LINE_MAX];
-        rewind(pt_file);
-        while (fgets(line, LINE_MAX, pt_file)) {
-            ap_rputs("<tr>", r);
-            const char *csv_line = apr_pstrdup(r->pool,line);
-            char *fields[fieldsCount];
-             parseCsvLine(csv_line, &delimiter, &fieldsCount, fields, r);
-            for (int i = 0; i < fieldsCount; i++) {
-                ap_rputs("<td>", r);
-                ap_rputs(fields[i], r);
-                ap_rputs("</td>", r);
-            }
-            ap_rputs("</tr>", r);
+    char line[LINE_MAX];
+    rewind(pt_file);
+    while (fgets(line, LINE_MAX, pt_file)) {
+        ap_rputs("<tr>", r);
+        const char *csv_line = apr_pstrdup(r->pool, line);
+        char *fields[fieldsCount];
+        parseCsvLine(csv_line, &delimiter, &fieldsCount, fields, r);
+        for (int i = 0; i < fieldsCount; i++) {
+            ap_rputs("<td>", r);
+            ap_rputs(fields[i], r);
+            ap_rputs("</td>", r);
         }
-        closeFile(pt_file);
-    } else {
-        ap_rputs("File not found", r);
+        ap_rputs("</tr>", r);
     }
-
     ap_rputs("</tbody>", r);
     ap_rputs("</table>", r);
 }
 
-
-
+/**
+ * Generates header block of HTML page, with download button
+ * @param pt_fileLocation - file name
+ * @param r
+ */
 void getFileInfoHeader(const char *pt_fileLocation, request_rec *r) {
     ap_rputs(
         "<div style='align-items: center; display:flex; flex-direction:row; justify-content: space-between;'>",
@@ -128,7 +145,13 @@ void getFileInfoHeader(const char *pt_fileLocation, request_rec *r) {
     ap_rputs("<hr />", r);
 }
 
-
+/**
+ *
+ * @param pt_args - Arguments string
+ * @param pt_field - field that we are looking for in arguments
+ * @param r - Apache request object
+ * @return
+ */
 char *getArgValues(const char *pt_args, const char *pt_field, const request_rec *r) {
     if (pt_args == NULL || pt_field == NULL) {
         return NULL;

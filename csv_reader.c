@@ -2,16 +2,20 @@
 #include "strings.h"
 #include "http_protocol.h"
 #include "apr_strings.h"
-#include "http_log.h"
 #include "stdbool.h"
 #define C2H_CSV_MAX_LINE_LENGTH 2048
 
 FILE  *openFile(const char *pt_fileName, const char *mode)
 {
-  return fopen(pt_fileName, "r");
+  if(NULL != pt_fileName) {
+  	return fopen(pt_fileName, mode);
+  }
+  return NULL;
 }
 void closeFile(FILE *pt_file){
-fclose(pt_file);
+  if(NULL != pt_file){
+    fclose(pt_file);
+  }
 }
 const char getDelimiter(FILE *pt_file){
   char delimiters[] = {',', ';'};
@@ -20,9 +24,10 @@ const char getDelimiter(FILE *pt_file){
   rewind(pt_file);
   // Read the first line of the file
   if (fgets(line, sizeof(line), pt_file) != NULL) {
-
-    for (size_t i = 0; i < strlen(line); i++) {
-      for (size_t j = 0; j < sizeof(delimiters); j++) {
+	size_t lineSize = strlen(line);
+	size_t delimitersSize = sizeof(delimiters);
+    for (size_t i = 0; i < lineSize; i++) {
+      for (size_t j = 0; j < delimitersSize; j++) {
         if (line[i] == delimiters[j]) {
           counts[j]++;
         }
@@ -33,8 +38,8 @@ const char getDelimiter(FILE *pt_file){
   // Find the delimiter with the highest count
   int max_count = 0;
   char detected_delimiter = ',';
-  for (size_t i = 0; i < sizeof(delimiters); i++) {
-
+  size_t delimitersSize = sizeof(delimiters);
+  for (size_t i = 0; i < delimitersSize; i++) {
     if (counts[i] > max_count) {
       max_count = counts[i];
       detected_delimiter = delimiters[i];
@@ -43,6 +48,11 @@ const char getDelimiter(FILE *pt_file){
 
   return detected_delimiter;
 }
+/**
+* Get fileds count for current CSV file by taking first row
+*
+*
+*/
  int getFieldsCount(FILE *pt_file, const char *delimiter){
   char line[C2H_CSV_MAX_LINE_LENGTH];
   int count = {0};
@@ -52,7 +62,8 @@ const char getDelimiter(FILE *pt_file){
     return count;
   }
   count = 1;
-  for (size_t i = 0; i < strlen(line); i++) {
+  size_t lineSize = strlen(line);
+  for (size_t i = 0; i < lineSize; i++) {
     if (line[i] == *delimiter) {
       count++;
     }
@@ -64,6 +75,8 @@ const char getDelimiter(FILE *pt_file){
  * Parses a single line of CSV data into an array of fields.
  *
  * @param line The CSV line to parse.
+ * @param delimiter - delimiter that is used in current CSV file
+ * @oaram fieldsCount - how many fields are in this file per row
  * @param fields Array to store pointers to parsed fields.
  * @param r Apache request struct
  * @return The number of fields parsed.
