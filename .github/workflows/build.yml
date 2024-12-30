@@ -43,9 +43,9 @@ jobs:
     steps:
       - name: Download Linux module artifact
         uses: actions/download-artifact@v4
-        path: artifacts
         with:
           name: linux-module
+          path: artifacts
       - name: Display structure of downloaded files
         run: ls -R artifacts
       - name: Create GitHub Release
