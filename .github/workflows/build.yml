@@ -28,8 +28,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name linux-module
-          path build
+          name: linux-module
+          path: build
 
   build-macos:
     name: Build for macOS
@@ -48,8 +48,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name macos-module
-          path build
+          name: macos-module
+          path: build
 
   release:
     needs: [build-linux, build-macos]
