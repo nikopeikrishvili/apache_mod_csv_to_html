@@ -1,28 +1,40 @@
 #include "csv_reader.h"
-#include "strings.h"
-#include "http_protocol.h"
-#include "apr_strings.h"
-#include "stdbool.h"
+#include <strings.h>
+#include <http_protocol.h>
+#include <apr_strings.h>
+#include <stdbool.h>
 #define C2H_CSV_MAX_LINE_LENGTH 2048
-
-FILE  *openFile(const char *pt_fileName, const char *mode)
+/**
+* Wraps around foppen method
+* @param pt_file - CSV file pointer
+* @param mode - mode for fopen file
+*/
+FILE  *openFile(const char *pt_file, const char *mode)
 {
-  if(NULL != pt_fileName) {
-  	return fopen(pt_fileName, mode);
+  if(NULL != pt_file) {
+  	return fopen(pt_file, mode);
   }
   return NULL;
 }
+/**
+*  Safe wrapper around fclose
+* @param pt_file - CSV file pointer
+*/
 void closeFile(FILE *pt_file){
   if(NULL != pt_file){
     fclose(pt_file);
   }
 }
+/**
+*  Getting delimiter for CSV file
+*
+*  @param pt_file - CSV file pointer
+*/
 const char getDelimiter(FILE *pt_file){
   char delimiters[] = {',', ';'};
   int counts[sizeof(delimiters)] = {0};
   char line[C2H_CSV_MAX_LINE_LENGTH];
   rewind(pt_file);
-  // Read the first line of the file
   if (fgets(line, sizeof(line), pt_file) != NULL) {
 	size_t lineSize = strlen(line);
 	size_t delimitersSize = sizeof(delimiters);
@@ -35,7 +47,6 @@ const char getDelimiter(FILE *pt_file){
     }
   }
 
-  // Find the delimiter with the highest count
   int max_count = 0;
   char detected_delimiter = ',';
   size_t delimitersSize = sizeof(delimiters);
@@ -50,8 +61,9 @@ const char getDelimiter(FILE *pt_file){
 }
 /**
 * Get fileds count for current CSV file by taking first row
-*
-*
+* @param pt_file - CSV file pointer
+* @param delimiter - CSV delimiter
+* @return - number of fields count
 */
  int getFieldsCount(FILE *pt_file, const char *delimiter){
   char line[C2H_CSV_MAX_LINE_LENGTH];
@@ -79,9 +91,8 @@ const char getDelimiter(FILE *pt_file){
  * @oaram fieldsCount - how many fields are in this file per row
  * @param fields Array to store pointers to parsed fields.
  * @param r Apache request struct
- * @return The number of fields parsed.
  */
-int parseCsvLine(const char *line, const char *delimiter, const int *fieldsCount, char **fields, request_rec *r) {
+void parseCsvLine(const char *line, const char *delimiter, const int *fieldsCount, char **fields, request_rec *r) {
   const char *ptr = line;
   int field_count = 0;
   bool in_quotes = false;
@@ -118,6 +129,4 @@ int parseCsvLine(const char *line, const char *delimiter, const int *fieldsCount
   // Add the last field
   buffer[buffer_pos] = '\0';
   fields[field_count++] = apr_pstrdup(r->pool,buffer);
-
-  return field_count;
 }
