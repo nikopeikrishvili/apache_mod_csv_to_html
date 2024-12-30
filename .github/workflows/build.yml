@@ -66,5 +66,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files:  ${{ github.workspace }}/artifacts/*
+          files:  ${{ github.workspace }}/artifacts/mod_csv_to_html.zip
           release-tag: ${{ github.ref_name }}
