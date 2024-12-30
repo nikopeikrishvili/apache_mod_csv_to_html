@@ -4,8 +4,11 @@ permissions:
   actions: read
 on:
   push:
-    tags:
-      - "v*"
+#    tags:
+#      - "v*"
+  branches:
+    - "main"
+
 
 jobs:
   build-linux:
@@ -50,7 +53,6 @@ jobs:
         run: ls -R artifacts
       - name: Create GitHub Release
         uses: AButler/upload-release-assets@v3.0
-        run: ls -R
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
