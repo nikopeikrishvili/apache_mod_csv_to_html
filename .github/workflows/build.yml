@@ -48,6 +48,8 @@ jobs:
         with:
           name: linux-module
           path: artifacts
+      - name: Zip file
+        run: cd  ${{ github.workspace }}/artifacts && zip mod_csv_to_html.so
       - name: Display structure of downloaded files
         run: |
           ls
@@ -56,11 +58,13 @@ jobs:
           echo "======"
           ls ${{ github.workspace }}
           echo "======"
+          tree ${{ github.workspace }}
+          echo "======"
       - name: Create GitHub Release
         uses: AButler/upload-release-assets@v3.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'artifacts/mod_csv_to_html.so'
+          files:  ${{ github.workspace }}'/artifacts/*'
           release-tag: ${{ github.ref_name }}
