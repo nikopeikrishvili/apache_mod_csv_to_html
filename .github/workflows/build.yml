@@ -23,7 +23,7 @@ jobs:
         run: |
           apxs -c mod_csv_to_html.c csv_reader.c
           mkdir -p build
-          mv *.so build/
+          mv .libs/*.so build/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
