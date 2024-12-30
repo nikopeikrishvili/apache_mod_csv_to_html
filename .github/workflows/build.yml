@@ -38,7 +38,7 @@ jobs:
 
 
   release:
-    needs: [build-linux]
+    needs: [ build-linux ]
     name: Create Release
     runs-on: ubuntu-latest
 
@@ -50,32 +50,23 @@ jobs:
           path: artifacts
       - name: Zip file
         run: cd  ${{ github.workspace }}/artifacts && zip mod_csv_to_html.zip mod_csv_to_html.so
-      - name: Display structure of downloaded files
-        run: |
-          ls
-          echo "======"
-          pwd
-          echo "======"
-          ls ${{ github.workspace }}
-          echo "======"
-          tree ${{ github.workspace }}
-          echo "======"
-      - name:
-          id: create_release
-          uses: actions/create-release@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            tag_name: ${{ github.ref_name }}
-            release_name: "Release ${{ github.ref_name }}"
-            draft: false
-            prerelease: false
+      # Create a GitHub release
+      - name: Create github release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
       - name: Upload assets to GitHub Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          asset_path:  ${{ github.workspace }}/artifacts/mod_csv_to_html.zip
+          asset_path: ${{ github.workspace }}/artifacts/mod_csv_to_html.zip
           asset_name: 'Apache module'
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_content_type: 'application/zip'
