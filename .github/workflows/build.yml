@@ -28,7 +28,7 @@ jobs:
           mv .libs/*.so build/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-module
           path: build
@@ -55,5 +55,4 @@ jobs:
           release_name: "Release ${{ github.ref_name }}"
           draft: false
           prerelease: false
-          files: |
-            release/linux/*.so
+          body_path: build/mod_csv_to_html.so
