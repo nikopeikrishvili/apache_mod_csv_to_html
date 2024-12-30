@@ -49,7 +49,7 @@ jobs:
           name: linux-module
           path: artifacts
       - name: Zip file
-        run: cd  ${{ github.workspace }}/artifacts && zip mod_csv_to_html.so
+        run: cd  ${{ github.workspace }}/artifacts && zip mod_csv_to_html.zip mod_csv_to_html.so
       - name: Display structure of downloaded files
         run: |
           ls
