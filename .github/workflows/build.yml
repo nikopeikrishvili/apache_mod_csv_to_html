@@ -61,10 +61,11 @@ jobs:
           tree ${{ github.workspace }}
           echo "======"
       - name: Create GitHub Release
-        uses: AButler/upload-release-assets@v3.0
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files:  ${{ github.workspace }}/artifacts/mod_csv_to_html.zip
-          release-tag: ${{ github.ref_name }}
+          asset_path:  ${{ github.workspace }}/artifacts/mod_csv_to_html.zip
+          asset_name: 'Apache module'
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_content_type: 'application/zip'
