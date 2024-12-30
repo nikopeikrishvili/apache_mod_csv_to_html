@@ -1,5 +1,7 @@
 name: Build Apache Module
-
+permissions:
+  contents: write
+  actions: read
 on:
   push:
     tags:
