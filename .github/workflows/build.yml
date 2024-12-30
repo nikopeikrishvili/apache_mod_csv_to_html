@@ -49,7 +49,13 @@ jobs:
           name: linux-module
           path: artifacts
       - name: Display structure of downloaded files
-        run: tree artifacts
+        run: |
+          ls
+          echo "======"
+          pwd
+          echo "======"
+          ls ${{ github.workspace }}
+          echo "======"
       - name: Create GitHub Release
         uses: AButler/upload-release-assets@v3.0
         env:
