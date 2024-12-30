@@ -1,0 +1,83 @@
+name: Build Apache Module
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-linux:
+    name: Build for Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y apache2-dev apache2-utils build-essential
+
+      - name: Build module
+        run: |
+          apxs -c mod_csv_to_html.c helper.c
+          mkdir -p build
+          mv *.so build/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name linux-module
+          path build
+
+  build-macos:
+    name: Build for macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build module
+        run: |
+          apxs -c mod_csv_to_html.c helper.c
+          mkdir -p build
+          mv *.so build/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name macos-module
+          path build
+
+  release:
+    needs: [build-linux, build-macos]
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Linux module artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-module
+          path: release/linux
+
+      - name: Download macOS module artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-module
+          path: release/macos
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: |
+            release/linux/*.so
+            release/macos/*.so
