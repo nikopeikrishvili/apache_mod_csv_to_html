@@ -4,11 +4,8 @@ permissions:
   actions: read
 on:
   push:
-    branches:
-      - 'main'
-      - 'releases/**'
-
-
+    tags:
+      - "v*"
 jobs:
   build-linux:
     name: Build for Linux
@@ -33,7 +30,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-module
+          name: mod_csv_to_html
           path: build/mod_csv_to_html.so
 
 
@@ -46,10 +43,8 @@ jobs:
       - name: Download Linux module artifact
         uses: actions/download-artifact@v4
         with:
-          name: linux-module
+          name: mod_csv_to_html
           path: artifacts
-      - name: Zip file
-        run: cd  ${{ github.workspace }}/artifacts && zip mod_csv_to_html.zip mod_csv_to_html.so
       # Create a GitHub release
       - name: Create github release
         id: create_release
