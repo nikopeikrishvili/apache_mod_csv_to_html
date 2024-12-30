@@ -21,7 +21,7 @@ jobs:
 
       - name: Build module
         run: |
-          apxs -c mod_csv_to_html.c helper.c
+          apxs -c mod_csv_to_html.c csv_reader.c
           mkdir -p build
           mv *.so build/
 
@@ -31,28 +31,9 @@ jobs:
           name: linux-module
           path: build
 
-  build-macos:
-    name: Build for macOS
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Build module
-        run: |
-          apxs -c mod_csv_to_html.c helper.c
-          mkdir -p build
-          mv *.so build/
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: macos-module
-          path: build
 
   release:
-    needs: [build-linux, build-macos]
+    needs: [build-linux,]
     name: Create Release
     runs-on: ubuntu-latest
 
@@ -62,12 +43,6 @@ jobs:
         with:
           name: linux-module
           path: release/linux
-
-      - name: Download macOS module artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: macos-module
-          path: release/macos
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
@@ -80,4 +55,3 @@ jobs:
           prerelease: false
           files: |
             release/linux/*.so
-            release/macos/*.so
