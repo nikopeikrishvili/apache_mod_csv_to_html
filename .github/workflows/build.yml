@@ -36,21 +36,23 @@ jobs:
 
 
   release:
-    needs: [build-linux,]
+    needs: [build-linux]
     name: Create Release
     runs-on: ubuntu-latest
 
     steps:
       - name: Download Linux module artifact
         uses: actions/download-artifact@v4
+        path: artifacts
         with:
           name: linux-module
-
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
       - name: Create GitHub Release
         uses: AButler/upload-release-assets@v3.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'build/*'
+          files: 'artifacts/*'
           release-tag: ${{ github.ref_name }}
