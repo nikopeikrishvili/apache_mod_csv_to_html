@@ -49,12 +49,12 @@ jobs:
           name: linux-module
           path: artifacts
       - name: Display structure of downloaded files
-        run: ls -R artifacts
+        run: tree artifacts
       - name: Create GitHub Release
         uses: AButler/upload-release-assets@v3.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          files: 'mod_csv_to_html.so'
+          files: 'artifacts/mod_csv_to_html.so'
           release-tag: ${{ github.ref_name }}
