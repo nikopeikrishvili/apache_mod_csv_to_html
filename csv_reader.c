@@ -9,7 +9,7 @@
 * @param pt_file - CSV file pointer
 * @param mode - mode for fopen file
 */
-FILE  *openFile(const char *pt_file, const char *mode)
+FILE  *ncsv_openFile(const char *pt_file, const char *mode)
 {
   if(NULL != pt_file) {
   	return fopen(pt_file, mode);
@@ -20,7 +20,7 @@ FILE  *openFile(const char *pt_file, const char *mode)
 *  Safe wrapper around fclose
 * @param pt_file - CSV file pointer
 */
-void closeFile(FILE *pt_file){
+void ncsv_closeFile(FILE *pt_file){
   if(NULL != pt_file){
     fclose(pt_file);
   }
@@ -30,7 +30,7 @@ void closeFile(FILE *pt_file){
 *
 *  @param pt_file - CSV file pointer
 */
-const char getDelimiter(FILE *pt_file){
+const char ncsv_getDelimiter(FILE *pt_file){
   char delimiters[] = {',', ';'};
   int counts[sizeof(delimiters)] = {0};
   char line[C2H_CSV_MAX_LINE_LENGTH];
@@ -65,7 +65,7 @@ const char getDelimiter(FILE *pt_file){
 * @param delimiter - CSV delimiter
 * @return - number of fields count
 */
- int getFieldsCount(FILE *pt_file, const char *delimiter){
+ int ncsv_getFieldsCount(FILE *pt_file, const char *delimiter){
   char line[C2H_CSV_MAX_LINE_LENGTH];
   int count = {0};
   rewind(pt_file);
@@ -92,7 +92,7 @@ const char getDelimiter(FILE *pt_file){
  * @param fields Array to store pointers to parsed fields.
  * @param r Apache request struct
  */
-void parseCsvLine(const char *line, const char *delimiter, const int *fieldsCount, char **fields, request_rec *r) {
+void ncsv_parseCsvLine(const char *line, const char *delimiter, const int *fieldsCount, char **fields, request_rec *r) {
   const char *ptr = line;
   int field_count = 0;
   bool in_quotes = false;

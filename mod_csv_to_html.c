@@ -27,7 +27,7 @@ static int csv_to_html_handler(request_rec *r) {
         return DECLINED; // Download file
     }
     const char *filename = getFileName(csv_filename);
-    FILE *pt_file = openFile(r->canonical_filename, "r");
+    FILE *pt_file = ncsv_openFile(r->canonical_filename, "r");
     if (NULL == pt_file) {
         return DECLINED; // Download file
     }
@@ -41,7 +41,7 @@ static int csv_to_html_handler(request_rec *r) {
     renderTable(pt_file, r);
     ap_rputs("</body>", r);
     ap_rputs("</html>", r);
-    closeFile(pt_file);
+    ncsv_closeFile(pt_file);
 
     return OK;
 }
@@ -66,7 +66,7 @@ module AP_MODULE_DECLARE_DATA csv_to_html_module = {
  * @param pt_filePath - file full pack
  * @return
  */
-const char *getFileName(const char *pt_filePath) {
+static const char *getFileName(const char *pt_filePath) {
     // Find the last slash
     const char *last_slash = strrchr(pt_filePath, '/');
     if (last_slash) {
@@ -79,7 +79,7 @@ const char *getFileName(const char *pt_filePath) {
  * Adds styles to html content in <style> tag
  * @param r
  */
-void addStyles(request_rec *r) {
+static void addStyles(request_rec *r) {
     ap_rputs("<style>\n", r);
     ap_rputs(
         "table {width:100%;border-collapse: collapse;margin: 25px 0;font-size: 0.9em;font-family: sans-serif;box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);}\n",
@@ -97,22 +97,22 @@ void addStyles(request_rec *r) {
  * @param pt_file - opened file pointer - file descriptor is not NULL it's checked in parent function
  * @param r - Apache request structure
  */
-void renderTable(FILE *pt_file, request_rec *r) {
+static void renderTable(FILE *pt_file, request_rec *r) {
     ap_rputs("<table>", r);
     ap_rputs("<tbody>", r);
-    const char delimiter = getDelimiter(pt_file);
+    const char delimiter = ncsv_getDelimiter(pt_file);
 
-    const int fieldsCount = getFieldsCount(pt_file, &delimiter);
+    const int fieldsCount = ncsv_getFieldsCount(pt_file, &delimiter);
     char line[LINE_MAX];
     rewind(pt_file);
     while (fgets(line, LINE_MAX, pt_file)) {
         ap_rputs("<tr>", r);
         const char *csv_line = apr_pstrdup(r->pool, line);
         char *fields[fieldsCount];
-        parseCsvLine(csv_line, &delimiter, &fieldsCount, fields, r);
+        ncsv_parseCsvLine(csv_line, &delimiter, &fieldsCount, fields, r);
         for (int i = 0; i < fieldsCount; i++) {
             ap_rputs("<td>", r);
-            ap_rputs(fields[i], r);
+            ap_rputs(ap_escape_html(r->pool,fields[i]), r);
             ap_rputs("</td>", r);
         }
         ap_rputs("</tr>", r);
@@ -126,7 +126,7 @@ void renderTable(FILE *pt_file, request_rec *r) {
  * @param pt_fileLocation - file name
  * @param r
  */
-void getFileInfoHeader(const char *pt_fileLocation, request_rec *r) {
+static void getFileInfoHeader(const char *pt_fileLocation, request_rec *r) {
     ap_rputs(
         "<div style='align-items: center; display:flex; flex-direction:row; justify-content: space-between;'>",
         r);
@@ -152,7 +152,7 @@ void getFileInfoHeader(const char *pt_fileLocation, request_rec *r) {
  * @param r - Apache request object
  * @return
  */
-char *getArgValues(const char *pt_args, const char *pt_field, const request_rec *r) {
+static char *getArgValues(const char *pt_args, const char *pt_field, const request_rec *r) {
     if (pt_args == NULL || pt_field == NULL) {
         return NULL;
     }
