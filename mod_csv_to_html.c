@@ -7,7 +7,6 @@
 #include <util_script.h>
 #include "mod_csv_to_html.h"
 #include "csv_reader.h"
-#include "http_log.h"
 /**
  * Main handler for module
  * @param r - Apache request structure
@@ -28,8 +27,14 @@ static int csv_to_html_handler(request_rec *r) {
   // end download
   r->content_type = "text/html";
   const char *csv_filename = apr_pstrdup(r->pool, r->canonical_filename);
-  if (csv_filename == NULL) {
-    return DECLINED; // Download file
+  apr_finfo_t file_info;
+  const int rc = apr_stat(&file_info, csv_filename, APR_FINFO_MIN, r->pool);
+  if (rc == APR_SUCCESS) {
+    const int exists = (
+      (file_info.filetype != APR_NOFILE)
+      && !(file_info.filetype & APR_DIR)
+    );
+    if (!exists) return DECLINED;
   }
   const char *filename = getFileName(csv_filename);
   FILE *pt_file = ncsv_openFile(r->canonical_filename, "r");
