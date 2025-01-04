@@ -38,11 +38,19 @@ apxs -iac mod_csv_to_html.c csv_reader.c
 ```
 <FilesMatch "\.csv$">
     SetHandler csv_to_html
-</FilesMatch> 
-
-
+    CSVToHtmlEnabled on
+    CSVToHtmlHasHeader on # The first row will displayed as header with different style
+</FilesMatch>
 ```
+
+
 ---
+## Directives
+
+Name | value | comment
+--- | --- | ---
+CSVToHtmlEnabled | on/off | Module is enabled or not
+CSVToHtmlHasHeader | on/off | If enabled, the first row of the table will have a different style.
 
 
 
