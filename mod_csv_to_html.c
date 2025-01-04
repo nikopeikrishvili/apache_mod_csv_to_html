@@ -11,7 +11,6 @@
 
 static const command_rec csv_to_html_directives[] =
 {
-    AP_INIT_TAKE1("CSVToHtmlEnabled", configCsvToHtmlEnabled, NULL, OR_ALL, "Enable or disable mod_csv_to_html"),
     AP_INIT_TAKE1("CSVToHtmlHasHeader", configCsvToHtmlHasHeader, NULL, OR_ALL,
                   "This flag is responsible to tell module if csv has header or not"),
     {NULL}
@@ -40,9 +39,6 @@ static int csv_to_html_handler(request_rec *r) {
     const csv_to_html_config *config = (csv_to_html_config *) ap_get_module_config(
         r->per_dir_config, &csv_to_html_module);
 
-    if (config->enabled == 0) {
-        return DECLINED;
-    }
     // Download file if we have download argument that is equal to 1
     apr_table_t *GET; // Create a var table
     ap_args_to_table(r, &GET); // Read data from get
@@ -183,15 +179,6 @@ static void getFileInfoHeader(const char *pt_fileLocation, request_rec *r, const
     ap_rputs("<hr />", r);
 }
 
-static const char *configCsvToHtmlEnabled(cmd_parms *cmd, void *cfg, const char *arg) {
-    csv_to_html_config *config = (csv_to_html_config *) cfg;
-    if (config) {
-        if (!strcasecmp(arg, "on")) config->enabled = 1;
-        else config->enabled = 0;
-    }
-    return NULL;
-}
-
 static const char *configCsvToHtmlHasHeader(cmd_parms *cmd, void *cfg, const char *arg) {
     csv_to_html_config *config = (csv_to_html_config *) cfg;
     if (config) {
@@ -208,7 +195,6 @@ void *create_dir_conf(apr_pool_t *pool, char *context) {
 
     if (cfg) {
         strcpy(cfg->context, context);
-        cfg->enabled = 0;
         cfg->has_header = 0;
     }
 
@@ -222,7 +208,6 @@ void *merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD) {
     csv_to_html_config *conf = (csv_to_html_config *) create_dir_conf(pool, "Merged configuration");
     /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-    conf->enabled = (add->enabled == 0) ? base->enabled : add->enabled;
     conf->css_path = add->css_path ? add->css_path : base->css_path;
     conf->js_path = add->js_path ? add->js_path : base->js_path;
     conf->has_header = (add->has_header == 0) ? base->has_header : add->has_header;
