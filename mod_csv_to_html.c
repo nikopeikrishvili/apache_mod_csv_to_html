@@ -67,11 +67,19 @@ static int csv_to_html_handler(request_rec *r) {
     ap_rputs(filename, r);
     ap_rputs("</title>", r);
     addStyles(r, config);
-    ap_rputs("</head><body style='padding:10px 20px;'>", r);
+    ap_rputs("</head><body>", r);
+    ap_rputs("<div class='flex-container'", r);
 
+    ap_rputs("<div>", r);
     getFileInfoHeader(filename, r, config);
-
-    renderTable(pt_file, r);
+    ap_rputs("</div>", r);
+    ap_rputs("<div>", r);
+    renderTable(pt_file, r, config);
+    ap_rputs("</div>", r);
+    ap_rputs("</div>", r);
+    ap_rputs("<script>", r);
+    addJavascript(r);
+    ap_rputs("</script>", r);
     ap_rputs("</body>", r);
     ap_rputs("</html>", r);
     ncsv_closeFile(pt_file);
@@ -103,24 +111,56 @@ static const char *getFileName(const char *pt_filePath) {
  * @param config
  */
 static void addStyles(request_rec *r, const csv_to_html_config *config) {
-    ap_rputs("<style>\n", r);
-    ap_rputs("table {width:100%;border-collapse: collapse;margin: 25px "
-             "0;font-size: 0.9em;font-family: sans-serif;box-shadow: 0 0 20px "
-             "rgba(0, 0, 0, 0.15);}\n",
-             r);
-
-    ap_rputs("table thead tr {background-color: #009879;color: #ffffff; text-align: left;}\n", r);
-    ap_rputs("th, td {padding: 12px 15px;}\n", r);
-    ap_rputs("table tbody tr{border-bottom: 1px solid #dddddd;}\n", r);
-    ap_rputs("table tbody tr:nth-of-type(even){background-color: #f3f3f3;}\n", r);
-    ap_rputs(
-        "table tbody tr:last-of-type{border-bottom: 2px solid #009879;}\n",
-        r);
+    ap_rputs("<style>"
+             "body {padding:10px 20px;}"
+             ".download_button {border-radius:5px; text-decoration:none; font-family: "
+             "sans-serif; background-color: DodgerBlue; border: none; color: "
+             "white; padding: 9px 16px; cursor: pointer; font-size: 15px;}"
+             ".flex-container {display:flex; flex-direction:column;}"
+             ".info_header {align-items: center; display:flex; flex-direction:row; justify-content: space-between;}"
+             ".cursor_pointer {cursor:pointer;}"
+             "table {width:100%;border-collapse: collapse;margin: 25px "
+             "0;font-size: 0.9em;font-family: sans-serif;box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);}"
+             "table thead tr {background-color: #009879;color: #ffffff; text-align: left;}"
+             "th, td {padding: 12px 15px;}"
+             "table tbody tr{border-bottom: 1px solid #dddddd;}"
+             "table tbody tr:nth-of-type(even){background-color: #f3f3f3;}"
+             "table tbody tr:last-of-type{border-bottom: 2px solid #009879;}\n", r);
+    ap_rputs("tr.filtration td {padding: 7px 7px;}", r);
+    ap_rputs("tr.filtration td input {width:100%; height:30px; border-radius:3px; border: 1px solid #a7a7a7;}", r);
     if (config->has_header == 1) {
-        ap_rputs("table tbody tr:first-of-type {border-top-left-radius:5px; background-color: #009879;color: #ffffff; text-align: left;}\n", r);
-
+        ap_rputs(
+            "table tbody tr:first-of-type {border-top-left-radius:5px; background-color: #009879;color: #ffffff; text-align: left;}\n",
+            r);
     }
     ap_rputs("</style>", r);
+}
+
+static void addJavascript(request_rec *r) {
+    ap_rputs("document.addEventListener('DOMContentLoaded', () => {\n"
+             "document.querySelectorAll('.filter').forEach(input => {\n"
+             "input.addEventListener('input', function () {\n"
+             "const column = this.getAttribute('data-column');\n"
+             "const filterValue = this.value.toLowerCase();\n"
+             "const table = document.getElementById('csv_table');\n"
+             "const rows = table.querySelectorAll('tbody tr');\n"
+             "rows.forEach(row => {\n"
+             "if (row.classList.contains('filtration') || row.classList.contains('protected')) {"
+             "return;"
+             "}"
+             "const cell = row.cells[column];\n"
+             "if (cell) {\n"
+             "const cellText = cell.textContent.toLowerCase();\n"
+             "if (cellText.includes(filterValue)) {\n"
+             "row.style.display = ''; // Show the row\n"
+             "} else {\n"
+             "row.style.display = 'none'; // Hide the row\n"
+             "}\n"
+             "}\n"
+             "});\n"
+             "});\n"
+             "});\n"
+             "});\n", r);
 }
 
 /**
@@ -128,26 +168,48 @@ static void addStyles(request_rec *r, const csv_to_html_config *config) {
  * @param pt_file - opened file pointer - file descriptor is not NULL it's
  * checked in parent function
  * @param r - Apache request structure
+ * @param config
  */
-static void renderTable(FILE *pt_file, request_rec *r) {
-    ap_rputs("<table>", r);
+static void renderTable(FILE *pt_file, request_rec *r, const csv_to_html_config *config) {
+    ap_rputs("<table id='csv_table'>", r);
     ap_rputs("<tbody>", r);
     const char delimiter = ncsv_getDelimiter(pt_file);
 
     const int fieldsCount = ncsv_getFieldsCount(pt_file, &delimiter);
     char line[LINE_MAX];
     rewind(pt_file);
+    size_t index = 0;
+    size_t inputsIndex = 0;
+    if (config->has_header == 1) {
+        inputsIndex = 1;
+    }
     while (fgets(line, LINE_MAX, pt_file)) {
-        ap_rputs("<tr>", r);
+        if (index == inputsIndex) {
+            // Add inputs for filtration
+            ap_rputs("<tr class='filtration'>", r);
+            for (int i = 0; i < fieldsCount; i++) {
+                ap_rputs("<td>", r);
+                ap_rprintf(r, "<input type='text' class='filter' data-column='%d' />", i);
+                ap_rputs("</td>", r);
+            }
+            ap_rputs("</tr>", r);
+        }
+        if (config->has_header == 1 && index == 0) {
+            ap_rputs("<tr class='protected'>", r);
+        } else {
+            ap_rputs("<tr>", r);
+        }
         const char *csv_line = apr_pstrdup(r->pool, line);
         char *fields[fieldsCount];
         ncsv_parseCsvLine(csv_line, &delimiter, &fieldsCount, fields, r);
+
         for (int i = 0; i < fieldsCount; i++) {
             ap_rputs("<td>", r);
             ap_rputs(ap_escape_html(r->pool, fields[i]), r);
             ap_rputs("</td>", r);
         }
         ap_rputs("</tr>", r);
+        index++;
     }
     ap_rputs("</tbody>", r);
     ap_rputs("</table>", r);
@@ -159,24 +221,14 @@ static void renderTable(FILE *pt_file, request_rec *r) {
  * @param r
  */
 static void getFileInfoHeader(const char *pt_fileLocation, request_rec *r, const csv_to_html_config *config) {
-    ap_rputs("<div style='align-items: center; display:flex; flex-direction:row; "
-             "justify-content: space-between;'>",
+    ap_rputs("<div class='info_header'>",
              r);
     ap_rputs("<div>", r);
-    ap_rputs("<h2>", r);
-    ap_rputs(pt_fileLocation, r);
-    ap_rputs("</h2>", r);
     ap_rputs("</div>", r);
-
-    ap_rputs("<div style='cursor:pointer;'>", r);
-    ap_rputs("<a style='border-radius:5px; text-decoration:none; font-family: "
-             "sans-serif; background-color: DodgerBlue; border: none; color: "
-             "white; padding: 12px 30px; cursor: pointer; font-size: 20px;' "
-             "href='?download=1'>Download</a>",
-             r);
+    ap_rputs("<div class='cursor_pointer'>", r);
+    ap_rputs("<a class='download_button' href='?download=1'>Download CSV File</a>", r);
     ap_rputs("</div>", r);
     ap_rputs("</div>", r);
-    ap_rputs("<hr />", r);
 }
 
 static const char *configCsvToHtmlHasHeader(cmd_parms *cmd, void *cfg, const char *arg) {

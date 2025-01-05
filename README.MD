@@ -3,7 +3,7 @@
 `mod_csv_to_html` is an Apache HTTP server module that automatically renders CSV files as HTML tables. It simplifies presenting CSV data directly in the browser without requiring additional preprocessing.
 
 
-![Demo image](assets/screenshot_2.png)
+![Demo image](assets/screenshot_3.jpeg)
 ---
 
 ## **Features**
